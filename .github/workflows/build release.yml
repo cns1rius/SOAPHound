@@ -1,4 +1,4 @@
-name: Build and Release .NET Framework with UPX
+name: Build and Release .NET Framework with RPX
 
 on:
   release:
@@ -35,17 +35,18 @@ jobs:
             /p:PublishDir="publish\"
           dir "publish\"
 
-      - name: Compress with UPX
-        uses: svenstaro/upx-action@v2
-        with:
-          files: |
-            publish/SOAPHound.exe
-          args: -9
+      - name: Install RPX packer
+        run: choco install rpx --no-progress
+      - name: Compress exe with RPX
+        shell: pwsh
+        run: |
+          rpx.exe publish/SOAPHound.exe publish/SOAPHound_rpx.exe
 
       - name: Upload Release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            publish/SOAPHound_rpx.exe
             publish/SOAPHound.exe
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
