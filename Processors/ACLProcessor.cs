@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.DirectoryServices;
+
 using System.Security.AccessControl;
 using System.Security.Principal;
 using SOAPHound.Enums;
@@ -15,13 +15,13 @@ namespace SOAPHound.Processors
     public static class ACLProcessor
     {
 
-        public static IEnumerable<Ace> parseAces(ActiveDirectorySecurity NTSecurityDescriptor, Label objectType, bool hasLaps)
+        public static IEnumerable<Ace> parseAces(CommonSecurityDescriptor NTSecurityDescriptor, Label objectType, bool hasLaps)
         {
 
             if (NTSecurityDescriptor != null)
             {
                 // Get owner
-                var ownerSid = NTSecurityDescriptor.GetOwner(typeof(SecurityIdentifier));
+                var ownerSid = NTSecurityDescriptor.Owner;
                 if (ownerSid != null)
                 {
                     var resolvedOwner = ADWSUtils.ResolveIDAndType(ownerSid.ToString());
@@ -35,19 +35,27 @@ namespace SOAPHound.Processors
                         };
                 }
 
-                foreach (ActiveDirectoryAccessRule rule in NTSecurityDescriptor.GetAccessRules(true, true, typeof(SecurityIdentifier)))
+                if (NTSecurityDescriptor.DiscretionaryAcl != null)
                 {
-
-                    if (rule.IdentityReference.ToString().StartsWith("S-1-5-21"))
+                    foreach (GenericAce genericAce in NTSecurityDescriptor.DiscretionaryAcl)
                     {
-                        var aceRights = rule.ActiveDirectoryRights;
-                        var aceType = rule.ObjectType.ToString().ToLower();
-                        var inherited = rule.IsInherited;
-                        var resolvedPrincipal = ADWSUtils.ResolveIDAndType(rule.IdentityReference.ToString());
+                        if (!(genericAce is QualifiedAce rule)) continue;
+
+                        if (rule.SecurityIdentifier.ToString().StartsWith("S-1-5-21"))
+                        {
+                            var aceRights = (ActiveDirectoryRights)rule.AccessMask;
+                            Guid rawObjectType = Guid.Empty;
+                            if (rule is ObjectAce objectAce)
+                            {
+                                rawObjectType = objectAce.ObjectAceType;
+                            }
+                            var aceType = rawObjectType.ToString().ToLower();
+                            var inherited = rule.IsInherited;
+                            var resolvedPrincipal = ADWSUtils.ResolveIDAndType(rule.SecurityIdentifier.ToString());
 
                         if (objectType == Label.CA)
                         {
-                            var rights = (CertificationAuthorityRights)rule.ActiveDirectoryRights;
+                            var rights = (CertificationAuthorityRights)rule.AccessMask;
                             if (((rights & CertificationAuthorityRights.ManageCA) == CertificationAuthorityRights.ManageCA))
                                 yield return new Ace
                                 {
@@ -289,13 +297,12 @@ namespace SOAPHound.Processors
 
                             };
 
+                        }
                     }
                 }
-
             }
 
+
         }
-
-
     }
 }

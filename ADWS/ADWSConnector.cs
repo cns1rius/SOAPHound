@@ -6,7 +6,7 @@ using System.Xml.Linq;
 using System.ServiceModel.Description;
 using System.Globalization;
 using System.Security.Principal;
-using System.DirectoryServices;
+using System.Security.AccessControl;
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -195,12 +195,10 @@ namespace SOAPHound.ADWS
             }
             return adObjects;
         }
-        private static ActiveDirectorySecurity ParseActiveDirectorySecurity(string value)
+        private static CommonSecurityDescriptor ParseSecurityDescriptor(string value)
         {
             byte[] data = Convert.FromBase64String(value);
-            ActiveDirectorySecurity sd = new ActiveDirectorySecurity();
-            sd.SetSecurityDescriptorBinaryForm(data);
-            return sd;
+            return new CommonSecurityDescriptor(false, false, data, 0);
         }
 
         private static X509Certificate2Collection ParseX509Certificate2Collection(string[] propertyValues)
@@ -328,7 +326,7 @@ namespace SOAPHound.ADWS
                             adobject.Member = propertyValues;
                             break;
                         case "msDS-AllowedToActOnBehalfOfOtherIdentity":
-                            adobject.MsDSAllowedToActOnBehalfOfOtherIdentity = ParseActiveDirectorySecurity(propertyValue);
+                            adobject.MsDSAllowedToActOnBehalfOfOtherIdentity = ParseSecurityDescriptor(propertyValue);
                             break;
                         case "msDS-AllowedToDelegateTo":
                             adobject.MsDSAllowedToDelegateTo = propertyValues;
@@ -355,7 +353,7 @@ namespace SOAPHound.ADWS
                             adobject.Name = propertyValue;
                             break;
                         case "nTSecurityDescriptor":
-                            adobject.NTSecurityDescriptor = ParseActiveDirectorySecurity(propertyValue);
+                            adobject.NTSecurityDescriptor = ParseSecurityDescriptor(propertyValue);
                             break;
                         case "objectGUID":
                             adobject.ObjectGUID = new Guid(Convert.FromBase64String(propertyValue));

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.DirectoryServices;
+using System.Security.AccessControl;
 using System.Globalization;
 using System.Linq;
 using System.Net.NetworkInformation;
@@ -31,7 +31,7 @@ namespace SOAPHound.ADWS
         public DateTime LastLogon { get; set; }
         public DateTime LastLogonTimestamp { get; set; }
         public string[] Member { get; set; }
-        public ActiveDirectorySecurity MsDSAllowedToActOnBehalfOfOtherIdentity { get; set; }
+        public CommonSecurityDescriptor MsDSAllowedToActOnBehalfOfOtherIdentity { get; set; }
         public string[] MsDSAllowedToDelegateTo { get; set; }
         public int FunctionalLevel { get; set; }
         public long MsMCSAdmPwdExpirationTime { get; set; }
@@ -40,7 +40,7 @@ namespace SOAPHound.ADWS
         public int MsPKIEnrollmentFlag { get; set; }
         public int MsPKIPrivateKeyFlag { get; set; }
         public string Name { get; set; }
-        public ActiveDirectorySecurity NTSecurityDescriptor { get; set; }
+        public CommonSecurityDescriptor NTSecurityDescriptor { get; set; }
         public Guid ObjectGUID { get; set; }
         public SecurityIdentifier ObjectSid { get; set; }
         public string OperatingSystem { get; set; }

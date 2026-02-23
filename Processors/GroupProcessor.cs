@@ -3,7 +3,7 @@ using SOAPHound.Enums;
 using SOAPHound.OutputTypes;
 using System;
 using System.Collections.Generic;
-using System.DirectoryServices;
+using System.Security.AccessControl;
 using System.Linq;
 using System.Security.Principal;
 using System.Text;
@@ -41,7 +41,7 @@ namespace SOAPHound.Processors
                 Members = parseMembers(adobject.Member),
                 Aces = ACLProcessor.parseAces(adobject.NTSecurityDescriptor, objectType, false),
                 IsDeleted = (adobject.IsDeleted == null) ? false : true,
-                IsACLProtected = (adobject.NTSecurityDescriptor.AreAccessRulesProtected || adobject.NTSecurityDescriptor.AreAuditRulesProtected) ? true : false,
+                IsACLProtected = (adobject.NTSecurityDescriptor != null && ((adobject.NTSecurityDescriptor.ControlFlags & ControlFlags.DiscretionaryAclProtected) != 0 || (adobject.NTSecurityDescriptor.ControlFlags & ControlFlags.SystemAclProtected) != 0)) ? true : false,
             };
             
             return adnode;

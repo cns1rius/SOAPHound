@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using System.Security.AccessControl;
 
 namespace SOAPHound.Processors
 {
@@ -47,7 +48,7 @@ namespace SOAPHound.Processors
                 ChildObjects = parseChildObjects(adobject.DistinguishedName),
                 GPOChanges = { },
                 IsDeleted = (adobject.IsDeleted == null) ? false : true,
-                IsACLProtected = (adobject.NTSecurityDescriptor.AreAccessRulesProtected || adobject.NTSecurityDescriptor.AreAuditRulesProtected) ? true : false,
+                IsACLProtected = (adobject.NTSecurityDescriptor != null && ((adobject.NTSecurityDescriptor.ControlFlags & ControlFlags.DiscretionaryAclProtected) != 0 || (adobject.NTSecurityDescriptor.ControlFlags & ControlFlags.SystemAclProtected) != 0)) ? true : false,
             };
             foreach (ADObject trustedDomain in trustedDomains)
             {

@@ -3,7 +3,7 @@ using SOAPHound.Enums;
 using SOAPHound.OutputTypes;
 using System;
 using System.Collections.Generic;
-using System.DirectoryServices;
+using System.Security.AccessControl;
 using System.Linq;
 using System.Security.Principal;
 using System.Text;
@@ -61,15 +61,18 @@ namespace SOAPHound.Processors
             //TODO allowedtodelegate
 
             var allowedToActPrincipals = new List<TypedPrincipal>();
-            ActiveDirectorySecurity sd = adobject.MsDSAllowedToActOnBehalfOfOtherIdentity;
-            if (sd != null)
+            CommonSecurityDescriptor sd = adobject.MsDSAllowedToActOnBehalfOfOtherIdentity;
+            if (sd != null && sd.DiscretionaryAcl != null)
             {
-                foreach (ActiveDirectoryAccessRule rule in sd.GetAccessRules(true, true, typeof(SecurityIdentifier)))
+                foreach (GenericAce genericAce in sd.DiscretionaryAcl)
                 {
-                    var res = new TypedPrincipal();
-                    res.ObjectIdentifier = rule.IdentityReference.ToString();
-                    res.ObjectType = ADWSUtils.ResolveIDAndType(res.ObjectIdentifier).ObjectType;
-                    allowedToActPrincipals.Add(res);
+                    if (genericAce is QualifiedAce rule)
+                    {
+                        var res = new TypedPrincipal();
+                        res.ObjectIdentifier = rule.SecurityIdentifier.ToString();
+                        res.ObjectType = ADWSUtils.ResolveIDAndType(res.ObjectIdentifier).ObjectType;
+                        allowedToActPrincipals.Add(res);
+                    }
                 }
             }
             Label objectType = ADWSUtils.ResolveIDAndType(adobject.ObjectSid.ToString()).ObjectType;
@@ -123,7 +126,7 @@ namespace SOAPHound.Processors
                 RegistrySessions = new APIResult(),
                 Aces = ACLProcessor.parseAces(adobject.NTSecurityDescriptor, objectType, hasLaps),
                 IsDeleted = (adobject.IsDeleted == null) ? false:true,
-                IsACLProtected = (adobject.NTSecurityDescriptor.AreAccessRulesProtected || adobject.NTSecurityDescriptor.AreAuditRulesProtected) ? true : false,
+                IsACLProtected = (adobject.NTSecurityDescriptor != null && ((adobject.NTSecurityDescriptor.ControlFlags & ControlFlags.DiscretionaryAclProtected) != 0 || (adobject.NTSecurityDescriptor.ControlFlags & ControlFlags.SystemAclProtected) != 0)) ? true : false,
             };
             //Update negative values for lastlogon and timestamp, which happens when the object never logged on 
             if (adnode.Properties.lastlogon < 0)
