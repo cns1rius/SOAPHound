@@ -1,4 +1,4 @@
-name: Build and Release .NET Framework
+name: Build and Release .NET 10
 
 on:
   release:
@@ -10,30 +10,18 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # 升级到推荐的 v4 版本
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v1
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x' # 指定使用 .NET 10 环境
 
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v1
-
-      - name: Restore NuGet packages
-        run: nuget restore SOAPHound.sln
-
-      - name: Build solution (Release)
-        run: msbuild.exe SOAPHound.sln /t:Rebuild /p:Configuration=Release
-
-      - name: Publish exe
-        shell: pwsh
+      - name: Publish Single File
+        # 这里直接使用你本地验证过的命令，并指定输出目录为 ./publish
         run: |
-          msbuild.exe "./SOAPHound.csproj" `
-            /t:Restore,Build,Publish `
-            /p:Configuration=Release `
-            /p:Platform="AnyCPU" `
-            /p:GenerateManifests=true `
-            /p:PublishDir="publish\"
-          dir "publish\"
+          dotnet publish SOAPHound.csproj -c Release -r win-x64 -o ./publish
+          dir ./publish
 
       - name: Upload Release assets
         uses: softprops/action-gh-release@v2

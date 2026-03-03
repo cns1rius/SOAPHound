@@ -25,6 +25,7 @@ namespace SOAPHound.ADWS
 
         NetTcpBinding Binding { get; set; }
         MessageVersion Version { get; set; }
+
         public ADWSConnector(string Host, NetworkCredential Credentials)
         {
             UriBuilder uriBuilder = new UriBuilder();
@@ -85,6 +86,7 @@ namespace SOAPHound.ADWS
             {
                 return string.Empty;
             }
+
             var components = ldapContext.Split(',');
             var domainComponents = components.Select(c => c.Replace("DC=", "")).ToArray();
             return string.Join(".", domainComponents);
@@ -99,8 +101,10 @@ namespace SOAPHound.ADWS
             UpdateCredentials(resourceClient.ClientCredentials);
 
             var rcRequest = Message.CreateMessage(Version, "http://schemas.xmlsoap.org/ws/2004/09/transfer/Get");
-            MessageHeader hdr = MessageHeader.CreateHeader("instance", "http://schemas.microsoft.com/2008/1/ActiveDirectory", "ldap:389");
-            MessageHeader hdr2 = MessageHeader.CreateHeader("objectReferenceProperty", "http://schemas.microsoft.com/2008/1/ActiveDirectory", "11111111-1111-1111-1111-111111111111");
+            MessageHeader hdr = MessageHeader.CreateHeader("instance",
+                "http://schemas.microsoft.com/2008/1/ActiveDirectory", "ldap:389");
+            MessageHeader hdr2 = MessageHeader.CreateHeader("objectReferenceProperty",
+                "http://schemas.microsoft.com/2008/1/ActiveDirectory", "11111111-1111-1111-1111-111111111111");
 
             rcRequest.Headers.Add(hdr);
             rcRequest.Headers.Add(hdr2);
@@ -108,7 +112,8 @@ namespace SOAPHound.ADWS
             Message resp = resourceClient.GetAsync(rcRequest).Result;
             var getResponse = MessageToXDocument(resp);
             string defaultNamingContext = getResponse
-                .Descendants(XName.Get("defaultNamingContext", "http://schemas.microsoft.com/2008/1/ActiveDirectory/Data"))
+                .Descendants(XName.Get("defaultNamingContext",
+                    "http://schemas.microsoft.com/2008/1/ActiveDirectory/Data"))
                 .Descendants(XName.Get("value", "http://schemas.microsoft.com/2008/1/ActiveDirectory"))
                 .FirstOrDefault()
                 .Value;
@@ -119,10 +124,13 @@ namespace SOAPHound.ADWS
             return adInfo;
         }
 
-        public List<ADObject> Enumerate(string ldapBase, string ldapFilter, List<string> properties, int batchSize = 1000)
+        public List<ADObject> Enumerate(string ldapBase, string ldapFilter, List<string> properties,
+            int batchSize = 1000)
         {
             List<ADObject> list = new List<ADObject>();
-            var endpointAddress = new System.ServiceModel.EndpointAddress(this.BaseUri + "ActiveDirectoryWebServices/Windows/Enumeration");
+            var endpointAddress =
+                new System.ServiceModel.EndpointAddress(this.BaseUri +
+                                                        "ActiveDirectoryWebServices/Windows/Enumeration");
 
             var searchClient = new ADWS.SearchClient(this.Binding, endpointAddress);
             UpdateCredentials(searchClient.ClientCredentials);
@@ -144,8 +152,10 @@ namespace SOAPHound.ADWS
                 }
             };
 
-            var Request = Message.CreateMessage(Version, "http://schemas.xmlsoap.org/ws/2004/09/enumeration/Enumerate", XmlReaderFromString(ObjectToXml(enumerateRequest)));
-            MessageHeader hdr = MessageHeader.CreateHeader("instance", "http://schemas.microsoft.com/2008/1/ActiveDirectory", "ldap:389");
+            var Request = Message.CreateMessage(Version, "http://schemas.xmlsoap.org/ws/2004/09/enumeration/Enumerate",
+                XmlReaderFromString(ObjectToXml(enumerateRequest)));
+            MessageHeader hdr = MessageHeader.CreateHeader("instance",
+                "http://schemas.microsoft.com/2008/1/ActiveDirectory", "ldap:389");
 
             Request.Headers.Add(hdr);
 
@@ -158,7 +168,8 @@ namespace SOAPHound.ADWS
                 .Value;
             if (enumerationContext == null)
             {
-                throw new Exception("EnumerationContext could not be extracted from Enumerate response. This could be because your domain does not use LAPS and you are running without the --nolaps option.");
+                throw new Exception(
+                    "EnumerationContext could not be extracted from Enumerate response. This could be because your domain does not use LAPS and you are running without the --nolaps option.");
             }
 
             var pullRequest = new PullSearchResultsRequest
@@ -182,8 +193,9 @@ namespace SOAPHound.ADWS
             bool endOfSequence = false;
             while (!endOfSequence)
             {
-
-                var pullRequestMessage = Message.CreateMessage(Version, "http://schemas.xmlsoap.org/ws/2004/09/enumeration/Pull", XmlReaderFromString(ObjectToXml(pullRequest)));
+                var pullRequestMessage = Message.CreateMessage(Version,
+                    "http://schemas.xmlsoap.org/ws/2004/09/enumeration/Pull",
+                    XmlReaderFromString(ObjectToXml(pullRequest)));
 
                 pullRequestMessage.Headers.Add(hdr);
                 Message resp2 = searchClient.PullAsync(pullRequestMessage).Result;
@@ -193,8 +205,10 @@ namespace SOAPHound.ADWS
                     .Descendants(XName.Get("EndOfSequence", "http://schemas.xmlsoap.org/ws/2004/09/enumeration"))
                     .Count() > 0;
             }
+
             return adObjects;
         }
+
         private static CommonSecurityDescriptor ParseSecurityDescriptor(string value)
         {
             byte[] data = Convert.FromBase64String(value);
@@ -208,18 +222,19 @@ namespace SOAPHound.ADWS
             {
                 return collection;
             }
+
             foreach (var propertyValue in propertyValues)
             {
                 try
                 {
                     byte[] data = Convert.FromBase64String(propertyValue);
-                    collection.Add(new X509Certificate2(data));
+                    collection.Add(X509CertificateLoader.LoadCertificate(data));
                 }
                 catch (Exception)
                 {
-
                 }
             }
+
             return collection;
         }
 
@@ -230,6 +245,7 @@ namespace SOAPHound.ADWS
             {
                 return collection.ToArray();
             }
+
             foreach (var propertyValue in propertyValues)
             {
                 try
@@ -239,11 +255,12 @@ namespace SOAPHound.ADWS
                 }
                 catch (Exception)
                 {
-
                 }
             }
+
             return collection.ToArray();
         }
+
         private static List<ADObject> ExtractADObjectsFromResponse(XDocument pullResponse)
         {
             XNamespace addata = "http://schemas.microsoft.com/2008/1/ActiveDirectory/Data";
@@ -252,7 +269,11 @@ namespace SOAPHound.ADWS
 
 
             var entries = new List<Dictionary<string, string>>();
-            var arrayKeys = new List<string> { "member", "msDS-AllowedToDelegateTo", "pKIExtendedKeyUsage", "servicePrincipalName", "certificateTemplates", "cACertificate", "sIDHistory" };
+            var arrayKeys = new List<string>
+            {
+                "member", "msDS-AllowedToDelegateTo", "pKIExtendedKeyUsage", "servicePrincipalName",
+                "certificateTemplates", "cACertificate", "sIDHistory"
+            };
 
             var adObjects = new List<ADObject> { };
 
@@ -269,6 +290,7 @@ namespace SOAPHound.ADWS
                     {
                         propertyValues = property.Elements(ad + "value").Select(v => v.Value).ToArray();
                     }
+
                     switch (propertyName)
                     {
                         case "class":
@@ -380,7 +402,8 @@ namespace SOAPHound.ADWS
                             adobject.ScriptPath = propertyValue;
                             break;
                         case "securityIdentifier":
-                            adobject.SecurityIdentifier = new SecurityIdentifier(Convert.FromBase64String(propertyValue), 0);
+                            adobject.SecurityIdentifier =
+                                new SecurityIdentifier(Convert.FromBase64String(propertyValue), 0);
                             break;
                         case "servicePrincipalName":
                             adobject.ServicePrincipalName = propertyValues;
@@ -398,7 +421,8 @@ namespace SOAPHound.ADWS
                             adobject.UserAccountControl = int.Parse(propertyValue);
                             break;
                         case "whenCreated":
-                            adobject.WhenCreated = DateTime.ParseExact(propertyValue, "yyyyMMddHHmmss.f'Z'", CultureInfo.InvariantCulture);
+                            adobject.WhenCreated = DateTime.ParseExact(propertyValue, "yyyyMMddHHmmss.f'Z'",
+                                CultureInfo.InvariantCulture);
                             break;
                         case "mail":
                             adobject.Email = propertyValue;
@@ -431,8 +455,10 @@ namespace SOAPHound.ADWS
                             break;
                     }
                 }
+
                 adObjects.Add(adobject);
             }
+
             return adObjects;
         }
 
@@ -442,7 +468,8 @@ namespace SOAPHound.ADWS
             var serializer = new XmlSerializer(typeof(T));
             using (var writer = new StringWriter())
             {
-                using (var xmlWriter = XmlWriter.Create(writer, new XmlWriterSettings { Indent = true, OmitXmlDeclaration = true }))
+                using (var xmlWriter = XmlWriter.Create(writer,
+                           new XmlWriterSettings { Indent = true, OmitXmlDeclaration = true }))
                 {
                     var namespaces = new XmlSerializerNamespaces();
                     namespaces.Add("d", "http://schemas.microsoft.com/2008/1/ActiveDirectory/Data");
@@ -476,8 +503,7 @@ namespace SOAPHound.ADWS
     [XmlRoot("Enumerate", Namespace = "http://schemas.xmlsoap.org/ws/2004/09/enumeration")]
     public class EnumerateRequest
     {
-        [XmlElement("Filter")]
-        public EnumerateRequestFilter Filter { get; set; }
+        [XmlElement("Filter")] public EnumerateRequestFilter Filter { get; set; }
 
         [XmlElement("Selection", Namespace = "http://schemas.microsoft.com/2008/1/ActiveDirectory")]
         public EnumerateRequestSelection Selection { get; set; }
@@ -485,8 +511,7 @@ namespace SOAPHound.ADWS
 
     public class EnumerateRequestFilter
     {
-        [XmlAttribute("Dialect")]
-        public string Dialect { get; set; }
+        [XmlAttribute("Dialect")] public string Dialect { get; set; }
 
         [XmlElement("LdapQuery", Namespace = "http://schemas.microsoft.com/2008/1/ActiveDirectory/Dialect/LdapQuery")]
         public LdapQuery LdapQuery { get; set; }
@@ -499,23 +524,18 @@ namespace SOAPHound.ADWS
 
     public class LdapQuery
     {
-        [XmlElement("Filter")]
-        public string QueryFilter { get; set; }
+        [XmlElement("Filter")] public string QueryFilter { get; set; }
 
-        [XmlElement("BaseObject")]
-        public string BaseObject { get; set; }
+        [XmlElement("BaseObject")] public string BaseObject { get; set; }
 
-        [XmlElement("Scope")]
-        public string Scope { get; set; }
+        [XmlElement("Scope")] public string Scope { get; set; }
     }
 
     public class EnumerateRequestSelection
     {
-        [XmlAttribute("Dialect")]
-        public string Dialect { get; set; }
+        [XmlAttribute("Dialect")] public string Dialect { get; set; }
 
-        [XmlElement("SelectionProperty")]
-        public List<string> SelectionProperties { get; set; }
+        [XmlElement("SelectionProperty")] public List<string> SelectionProperties { get; set; }
 
         public EnumerateRequestSelection()
         {
@@ -539,19 +559,14 @@ namespace SOAPHound.ADWS
 
     public class Controls
     {
-        [XmlElement(ElementName = "control")]
-        public List<Control> Control { get; set; }
+        [XmlElement(ElementName = "control")] public List<Control> Control { get; set; }
     }
 
     public class Control
     {
-        [XmlAttribute(AttributeName = "type")]
-        public string Type { get; set; }
+        [XmlAttribute(AttributeName = "type")] public string Type { get; set; }
 
         [XmlElement(ElementName = "controlValue")]
         public string ControlValue { get; set; }
     }
-
-
-
 }
